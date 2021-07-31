@@ -1,0 +1,25 @@
+{
+  "name": "reminderbot",
+  "version": "1.0.0",
+  "description": "Sends Discord messages as reminders for Google Calendar events.",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yummypasta/ReminderBot.git"
+  },
+  "author": "",
+  "license": "UNLICENSED",
+  "bugs": {
+    "url": "https://github.com/yummypasta/ReminderBot/issues"
+  },
+  "homepage": "https://github.com/yummypasta/ReminderBot#readme",
+  "dependencies": {
+    "discord.js": "^12.5.3",
+    "googleapis": "^83.0.0",
+    "node-schedule": "^2.0.0"
+  }
+}
