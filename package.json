@@ -19,6 +19,7 @@
   "homepage": "https://github.com/yummypasta/ReminderBot#readme",
   "dependencies": {
     "discord.js": "^12.5.3",
+    "fs": "^0.0.1-security",
     "googleapis": "^83.0.0",
     "node-schedule": "^2.0.0"
   }
