@@ -3,109 +3,57 @@ import moment from "moment";
 import discord from "discord.js";
 import schedule from "node-schedule";
 import gapi from "googleapis";
-import { DISCORD_TOKEN, LOGGING_CHANNEL, CRON_SCHEDULE, CALENDAR_IDS, REMINDERS } from "./config.js";
+import { DISCORD_TOKEN, LOGGING_CHANNEL, CRON_SCHEDULE, CALENDAR_IDS, REMINDERS, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GUILD_ID } from "./config.js";
+import AuthConnect from "authconnect-djs";
 const {google} = gapi;
 
 const SCOPES = ['https://www.googleapis.com/auth/calendar.readonly'];
 
-let auth = null;
-let credentials = null;
-let accessTokenObtained = false;
 let logChannel = null;
+let auth;
 let scheduledJob;
 const bot = new discord.Client();
 bot.login(DISCORD_TOKEN);
 
 registerBotListeners();
 
-function loadCredentials(){
-    return new Promise((resolve, reject) => {
-        fs.readFile("google_credentials.json", (err, data) => {
-            if(err){
-                console.error(err);
-                reject(err);
-                return;
-            }
-            credentials = JSON.parse(data);
-            resolve();
-            return;
-        });
-    });
-}
-
-function tryAuthorize(){
-    const {client_secret, client_id, redirect_uris} = credentials.installed;
-    auth = new google.auth.OAuth2(client_id, client_secret, redirect_uris[0]);
-    return new Promise((resolve, reject) => {
-        fs.readFile("google_token.json", (err, token) => {
-            if (err){
-                console.log("Access token has not been obtained yet!");
-                reject(err);
-                return;
-            }
-            auth.setCredentials(JSON.parse(token));
-            accessTokenObtained = true;
-            resolve();
-        });
-    });
-}
-
-function getAuthURL(){
-    return auth.generateAuthUrl({
-        access_type: "offline",
-        scope: SCOPES
-    });
-}
-
-async function completeAuthFlow(code){
-    let token = (await auth.getToken(code)).tokens;
-    auth.setCredentials(token);
-    accessTokenObtained = true;
-    await new Promise((resolve, reject) => {
-        fs.writeFile("google_token.json", JSON.stringify(token), (err) => {
-            if(err){
-                reject(err);
-                return;
-            }
-            console.log("Authorized! Saved new token to disk.");
-            resolve();
-        });
-    });
-}
+const onLinked = async (guildId, authData) => {
+    await logMessage("✅ Google Calendar has been authorized!");
+};
 
 function registerBotListeners(){
+    console.log("# Initializing...");
     bot.on("ready", async () => {
-        console.log("Connected to Discord!");
-        loadCredentials().then(() => {
-            tryAuthorize().then(() => {
-                console.log("Logged in to Calendar!");
-            }, () => {
-                logMessage(`Google Calendar is not authorized! Navigate to the URL:\n<${getAuthURL()}>\nand type \`link paste-code-here\`.`);
-            });
+        console.log("## Connected to Discord...");
+        auth = new AuthConnect({
+            google: {
+                clientId: GOOGLE_CLIENT_ID,
+                clientSecret: GOOGLE_CLIENT_SECRET
+            }
         });
+        auth.useDefaultDataHandlers("./auth-data.json");
+        auth.setLinkedCallback(onLinked);
+
         scheduleJob();
+
+        console.log("### Ready!");
     });
     bot.on("message", onMessage);
 }
 
 
 async function onMessage(msg){
-    if(msg.cleanContent.startsWith("link")){
-        const split = msg.cleanContent.split(" ");
-        if(split.length < 2){
-            msg.react("❌");
+    if(msg.guild.id !== GUILD_ID) return;
+    if(msg.cleanContent === "login"){
+        if(!msg.member.permissions.has("ADMINISTRATOR")) {
+            msg.channel.send("❌ Only administrators can use this command.");
             return;
         }
-        const code = split[1];
-        try {
-            await completeAuthFlow(code);
-        } catch(e) {
-            console.error(e);
-            msg.react("❌");
-            return;
-        }
-        msg.react("✅");
-        return;
+        const scopes = SCOPES.join(" ");
+        const url = await auth.generateAuthURL("google", msg.guild.id, scopes);
+        await msg.member.createDM();
+        await msg.member.send(`Please log in to Google Calendar by clicking the link below.\n${url}`);
+        await msg.channel.send(`I've DMed you a link to log in!`);
     }
     if(msg.cleanContent == "forcerun"){
         onScheduleRun();
@@ -125,11 +73,21 @@ function scheduleJob(){
 }
 
 async function onScheduleRun(){
-    if(!accessTokenObtained){
-        await logMessage("❌ Google Calendar has not been authorized! Please restart the bot and link your account.");
+    if(!auth.isGuildLoggedIn("google", GUILD_ID)){
+        await logMessage("❌ Google Calendar has not been authorized! Type `login` to authorize.");
         return;
     }
-    const calendar = google.calendar({version: "v3", auth: auth});
+
+    const googleAuthObject = new google.auth.OAuth2(GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET); // bug: add third param called redirect uri
+    googleAuthObject.setCredentials({
+        access_token: await auth.getAccessToken("google", GUILD_ID),
+        refresh_token: await auth.getRefreshToken("google", GUILD_ID),
+        scope: SCOPES.join(" "),
+        token_type: "Bearer",
+        expiry_date: (await auth.getAccessTokenExpiryDate("google", GUILD_ID)).getTime()
+    });
+
+    const calendar = google.calendar({version: "v3", auth: googleAuthObject});
     const start = new Date();
     start.setHours(24, 0, 0, 0); // Gets next midnight
     const endTime = new Date(start.getFullYear(), start.getMonth(), start.getDate(), 23, 59, 59);
