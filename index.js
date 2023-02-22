@@ -17,7 +17,7 @@ bot.login(DISCORD_TOKEN);
 
 registerBotListeners();
 
-const onLinked = async (guildId, authData) => {
+const onLinked = async (service, guildId) => {
     await logMessage("✅ Google Calendar has been authorized!");
 };
 
