@@ -43,6 +43,8 @@ function registerBotListeners(){
 
 
 async function onMessage(msg){
+    if(msg.author.bot) return;
+    if(!msg.guild) return;
     if(msg.guild.id !== GUILD_ID) return;
     if(msg.cleanContent === "login"){
         if(!msg.member.permissions.has("ADMINISTRATOR")) {
