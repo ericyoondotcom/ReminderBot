@@ -15,3 +15,22 @@ Sends Discord messages as reminders for Google Calendar events.
     - `CRON_SCHEDULE`: The time(s) the bot will check for trigger events. Use cron syntax; you can have it run multiple times a day, but for now, all events from tomorrow at 12:00:00 AM to tomorrow at 11:59:59 PM will be checked, so it is recommended that this is set to once a day.
     - `CALENDAR_IDS`: The IDs of all of the Google Calendars you want to check for trigger events.
     - `REMINDERS`: A map of triggering event names to their reminder message text: `{ "Event Name": "Reminder message" }`.
+
+## Using PM2
+You need to make sure to set the `TZ` environment variable to your correct timezone. If you're using PM2 to manage your process, you can add the following config file, replacing the timezone with yours:
+
+**pm2.config.cjs**
+```js
+module.exports = {
+	apps: [{
+		name: "reminderbot",
+		script: "index.js",
+		env: {
+			TZ: "America/Los_Angeles"
+		}
+	}]
+}
+```
+
+Then, to start, do `pm2 start pm2.config.cjs`.
+
