@@ -4,6 +4,7 @@ Sends Discord messages as reminders for Google Calendar events.
 ## Getting Started
 1. Copy `config.template.js` to `config.js`.
 2. Follow the [Create Web application credentials](https://developers.google.com/workspace/guides/create-credentials#web-application) guide.
+    - Add the following string as an Authorized Redirect URI: `https://authconnect-djs.web.app/redir.html`.
 3. Enable the Google Calendar API in the Google Cloud Console.
 4. Make a bot in the Discord developers portal, and add it to your guild.
 5. Fill in the following values in `config.js`:
